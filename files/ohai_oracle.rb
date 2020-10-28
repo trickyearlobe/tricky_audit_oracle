@@ -20,29 +20,32 @@ Ohai.plugin(:Oracle) do
       l['sid']         = env['ORACLE_SID']
       l['oracle_base'] = env['ORACLE_BASE']
       l['oracle_home'] = env['ORACLE_HOME']
-      l['oracle_cli']  = env['_']
+      l['oracle_cli']  = env['ORACLE_HOME'] + '/bin/sqlplus'
       [ l['sid'], l ]
     end.to_h
 
     # Try to get the service names using a local SID connection with SYSDBA role
     oracle['instances'].each do |sid, instance|
       if File.exist? instance['oracle_cli']
-        query=['connect / as SYSDBA', 'show parameter service', 'exit'].join("\n")
+        query=[ 'connect / as SYSDBA',
+                'set pagesize 0',
+                'set linesize 2048',
+                "select VALUE from v$parameter where NAME = 'service_names';",
+                'exit'
+              ].join("\n")
         env={"ORACLE_HOME" => instance['oracle_home'], "ORACLE_SID" => sid}
         cmd = Mixlib::ShellOut.new(
           instance['oracle_cli'], "-S", "/nolog",
-          user:instance['user'],
-          input:query,
-          environment:env
+          user: instance['user'],
+          input: query,
+          environment: env
         )
         cmd.run_command
-        oracle['instances'][sid]['service'] = (cmd.stdout || cmd.stderr).lines.map do |l|
-          l.split
-        end.filter do |l|
-          l[0] == 'service_names'
-        end.map do |l|
-          l[2]
-        end.first
+        oracle['instances'][sid]['services'] = (cmd.stdout || cmd.stderr).lines.first.split(',').map do |l|
+          l.strip
+        end
+      else
+        oracle['instances'][sid]['services'] = ['not.detected']
       end
     end
   end
