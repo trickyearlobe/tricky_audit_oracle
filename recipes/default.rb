@@ -20,21 +20,23 @@ node['oracle']['instances'].each do |sid, instance|
     ]
     inputs(
       #### Doing it this way with service names needs creds for a user with SYSDBA privs
-      user: "tricky",
-      password: "dicky",
-      as_db_role: "SYSDBA",
-      service: instance['services'].first,
-      sqlplus_bin: instance['oracle_cli'],
-      oracle_host_checks: true,
-
-      #### This should work for a local SID with no creds, but there are Inspec issues preventing it.
-      #### * Inspec shipped with CC16 requires :as_su_user instead of :su_user but the Oracle CIS profile can only pass :su_user
-      #### * Inspec (version?) doesn't correctly escape $ when running as the :su_user causing queries on v$parameter to fail
-      # su_user: instance['user'],
+      # user: "michael",
+      # password: "mouse",
       # as_db_role: "SYSDBA",
-      # service: sid,
+      # service: instance['services'].first,
       # sqlplus_bin: instance['oracle_cli'],
       # oracle_host_checks: true,
+
+      #### This works for a local SID with no creds, but we currently have to ship a monkey-patched
+      #### version of oracledb_session in this cookbook to overcome the following Inspec bugs:-
+      #### * Inspec shipped with CC16 requires :as_su_user instead of :su_user but the Oracle CIS profile can only pass :su_user
+      #### * Inspec (version?) doesn't correctly escape $ when running as the :su_user causing queries on v$parameter to fail
+      #### * Sometimes query failures are masked if they use .row or .column properties causing false passes
+      su_user: instance['user'],
+      as_db_role: "SYSDBA",
+      service: sid,
+      sqlplus_bin: instance['oracle_cli'],
+      oracle_host_checks: true,
     )
   end
 end

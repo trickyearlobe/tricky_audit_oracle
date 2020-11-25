@@ -7,10 +7,11 @@
 name 'tricky_audit_oracle'
 
 # Where to find external cookbooks:
-default_source :supermarket
+# default_source :supermarket
 
 # run_list: chef-client will run these recipes in the order specified.
 run_list 'tricky_audit_oracle::default'
 
 # Specify a custom source for a single cookbook:
 cookbook 'tricky_audit_oracle', path: '.'
+cookbook 'remote_audit', git: 'https://github.com/trickyearlobe/remote_audit'
