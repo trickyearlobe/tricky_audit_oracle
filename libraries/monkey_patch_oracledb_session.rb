@@ -53,12 +53,13 @@ module Inspec::Resources
 
       command = command_builder(format_options, sql)
       inspec_cmd = inspec.command(command)
-      if (inspec_cmd.stdout =~ /ERROR/)
-        # This might feel a bit aggressive but we use raise here because fail_resource doesn't
-        # bubble up to the top and give an obvious clean reason for a failure. In some cases failures
-        # are even masked when using .row or .column properties of result sets.
-        raise "Sad times 😞\nAn error occured executing an Oracle query\n\n#{inspec_cmd.stdout}"
-      end
+      # This might feel a bit aggressive but we use raise here because fail_resource doesn't
+      # bubble up to the top and give an obvious clean reason for a failure. In some cases failures
+      # are even masked when using .row or .column properties of result sets.
+      raise "Sad times 😞\nAn error occured executing an Oracle query\n\n#{inspec_cmd.stdout}" if
+        ( inspec_cmd.stdout =~ /^ORA-\d+:/ ) || # Oracle error code
+        ( inspec_cmd.stdout =~ /^SP2-\d+:/ ) || # SQL*Plus error code
+        ( inspec_cmd.stdout =~ /^CPY-\d+:/ )    # COPY error code
       DatabaseHelper::SQLQueryResult.new(inspec_cmd, parse_csv_result(inspec_cmd.stdout))
     end
 
