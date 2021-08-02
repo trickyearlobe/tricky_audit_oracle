@@ -33,6 +33,7 @@ module Inspec::Resources
       @host = opts[:host] || "localhost"
       @port = opts[:port] || "1521"
       @service = opts[:service]
+      @sid = opts[:sid]
       @su_user = opts[:as_os_user] || opts[:su_user]
       @db_role = opts[:as_db_role]
       @sqlcl_bin = opts[:sqlcl_bin] || nil
@@ -43,12 +44,13 @@ module Inspec::Resources
     end
 
     def query(sql)
+      ENV['ORACLE_SID'] = @sid if @sid
       if @sqlcl_bin && inspec.command(@sqlcl_bin).exist?
         @bin = @sqlcl_bin
         format_options = "set sqlformat csv\nSET FEEDBACK OFF"
       else
         @bin = "#{@sqlplus_bin} -S"
-        format_options = "SET MARKUP CSV ON\nSET PAGESIZE 32000\nSET FEEDBACK OFF"
+        format_options = "SET COLSEP <:>\nSET LINESIZE 32767\nSET PAGESIZE 32000\nSET FEEDBACK OFF"
       end
 
       command = command_builder(format_options, sql)
@@ -97,7 +99,11 @@ module Inspec::Resources
     end
 
     def parse_csv_result(stdout)
-      output = stdout.sub(/\r/, "").strip
+      # Convert output seperated by <:> into CSV format
+      output = stdout.lines.select{|line| line.strip != ""}.map{|line| line.split('<:>').map{|col| '"'+col.strip+'"'}.join(',')}
+      # Remove the header divider
+      output.delete_at(1)
+      output = output.join("\n")
       converter = ->(header) { header.downcase }
       CSV.parse(output, headers: true, header_converters: converter).map { |row| Hashie::Mash.new(row.to_h) }
     end
