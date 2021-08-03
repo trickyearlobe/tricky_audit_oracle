@@ -58,10 +58,11 @@ module Inspec::Resources
       # This might feel a bit aggressive but we use raise here because fail_resource doesn't
       # bubble up to the top and give an obvious clean reason for a failure. In some cases failures
       # are even masked when using .row or .column properties of result sets.
-      raise "Sad times 😞\nAn error occured executing an Oracle query\n\n#{inspec_cmd.stdout}" if
+      raise "Sad times 😞\nAn error occured executing an Oracle query\n\n#{inspec_cmd.stdout + inspec_cmd.stderr}" if
         ( inspec_cmd.stdout =~ /^ORA-\d+:/ ) || # Oracle error code
         ( inspec_cmd.stdout =~ /^SP2-\d+:/ ) || # SQL*Plus error code
-        ( inspec_cmd.stdout =~ /^CPY-\d+:/ )    # COPY error code
+        ( inspec_cmd.stdout =~ /^CPY-\d+:/ ) || # COPY error code
+        ( inspec_cmd.exit_status != 0 )         # Non-Zero return code
       DatabaseHelper::SQLQueryResult.new(inspec_cmd, parse_csv_result(inspec_cmd.stdout))
     end
 
